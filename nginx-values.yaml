@@ -1,0 +1,31 @@
+controller:
+  hostPort:
+    enabled: true
+
+  service:
+    type: NodePort
+
+  nodeSelector:
+    kubernetes.io/hostname: fb-test-control-plane
+
+  tolerations:
+    - operator: Exists
+
+  replicaCount: 1
+
+  ingressClassResource:
+    default: true
+
+  podAnnotations:
+    fluentbit.io/parser: k8s-nginx-ingress
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  config:
+    worker-processes: "1"

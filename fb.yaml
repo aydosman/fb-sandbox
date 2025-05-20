@@ -1,0 +1,87 @@
+nodeSelector:
+  test-fb: "true"
+
+image:
+  repository: cr.fluentbit.io/fluent/fluent-bit
+  tag: 4.0.1-debug
+  pullPolicy: IfNotPresent
+
+tolerations:
+  - operator: Exists
+
+podAnnotations:
+  fluentbit.io/exclude: "true"
+
+env:
+  - name: NODE_IP
+    valueFrom:
+      fieldRef:
+        fieldPath: status.hostIP
+  - name: STORAGE_PATH
+    value: /fluent-bit/data
+
+config:
+  service: |
+    [SERVICE]
+        daemon false
+        flush 5
+        grace 5
+        http_Port 2020
+        http_listen 0.0.0.0
+        http_server true
+        log_level warn
+        parsers_file /fluent-bit/etc/parsers.conf
+        parsers_file /fluent-bit/etc/conf/custom_parsers.conf
+        scheduler.base 5
+        scheduler.cap 30
+        storage.backlog.mem_limit 32MB
+        storage.checksum false
+        storage.delete_irrecoverable_chunks true
+        storage.max_chunks_up 32
+        storage.metrics true
+        storage.path /fluent-bit/data
+        storage.sync normal
+
+  inputs: |
+    [INPUT]
+        name              tail
+        alias             tail
+        path              /var/log/containers/*.log
+        tag_regex         (?<pod_name>[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)_(?<namespace_name>[^_]+)_(?<container_name>.+)-
+        tag               kube.<namespace_name>.<pod_name>.<container_name>
+        read_from_head    true
+        refresh_interval  10
+        rotate_wait       30
+        multiline.parser  cri
+        skip_long_lines   true
+        skip_empty_lines  true
+        static_batch_size 8M
+        buffer_chunk_size 32KB
+        buffer_max_size   32KB
+        db                ${STORAGE_PATH}/tail-containers.db
+        db.sync           normal
+        db.locking        true
+        db.journal_mode   wal
+        storage.type      filesystem
+
+  filters: |
+    [FILTER]
+        name                kubernetes
+        alias               k8s
+        match               kube.*
+        kube_tag_prefix     kube.
+        regex_parser        kubernetes-tag
+        k8s-logging.parser  true
+        k8s-logging.exclude true
+        kube_token_ttl      600
+
+  outputs: |
+    [OUTPUT]
+        name stdout
+        match *
+
+  customParsers: |-
+    [PARSER]
+        name   kubernetes-tag
+        format regex
+        regex  ^(?<namespace_name>[^.]+)\.(?<pod_name>[^.]+)\.(?<container_name>[^.]+)
