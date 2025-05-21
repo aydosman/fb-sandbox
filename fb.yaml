@@ -3,7 +3,7 @@ nodeSelector:
 
 image:
   repository: cr.fluentbit.io/fluent/fluent-bit
-  tag: 4.0.1-debug
+  tag: 4.0.1
   pullPolicy: IfNotPresent
 
 tolerations:
@@ -71,6 +71,8 @@ config:
         match               kube.*
         kube_tag_prefix     kube.
         regex_parser        kubernetes-tag
+        Merge_Log           On
+        Merge_Log_Key       log
         k8s-logging.parser  true
         k8s-logging.exclude true
         kube_token_ttl      600

@@ -1,4 +1,9 @@
 controller:
+  image:
+    registry: registry.k8s.io
+    image: ingress-nginx/controller
+    tag: v1.12.2
+
   hostPort:
     enabled: true
 
